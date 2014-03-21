@@ -37,6 +37,7 @@ ALL_SCRAPERS = (
     'TotallyCoolPix',
     'TimeLightbox',
     'NewYorkTimesLens',
+    'Interia990px',
 )
 
 
@@ -458,6 +459,56 @@ class NewYorkTimesLens(BasePlugin):
     def __text(txt):
         return txt.replace('&#x2019;s', "'")
 
+
+class Interia990px(BasePlugin):
+
+    _title = 'Interia.pl: 990px'
+
+    def _get_albums(self):
+        self._albums = []
+        url = 'http://www.990px.pl'
+        tree = self._get_tree(url)
+        titles_albums = tree.findAll('div', 'main_meta')
+        titlelist = list()
+        for node in titles_albums:
+            title = node.find('a').string
+            titlelist.append(title)
+        albums = tree.findAll('div', 'post')
+        for id, album in enumerate(albums):
+            album_url = album.find('img', attrs={'width': '990'}).findPrevious('a')['href']
+            d = album.find('p', recursive=False)
+            if not d:
+                continue
+            description = self._collapse(d.contents)
+            pic = album.find('img', attrs={'width': '990'})['src']
+            if not pic:
+                continue
+            self._albums.append({
+                'title': titlelist[id],
+                'album_id': id,
+                'pic': pic,
+                'description': description,
+                'album_url': album_url}
+            )
+        return self._albums
+
+    def _get_photos(self, album_url):
+        self._photos[album_url] = []
+        tree = self._get_tree(album_url)
+        album_title = tree.find('h2').a.string
+        images = tree.findAll('div', attrs={'style': 'width: 1000px'})
+        for id, photo in enumerate(images):
+            pic = photo.img['src']
+            description =  photo.img['title']
+            self._photos[album_url].append({
+                'title': '%d - %s' % (id + 1, album_title),
+                'album_title': album_title,
+                'photo_id': id,
+                'pic': pic,
+                'description': description,
+                'album_url': album_url
+            })
+        return self._photos[album_url]
 
 def get_scrapers(enabled_scrapers=None):
     if enabled_scrapers is None:
